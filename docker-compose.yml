@@ -1,0 +1,54 @@
+services:
+  mysqldb:
+    container_name: mysql-db
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root        # password for MySQL
+      MYSQL_DATABASE: examdb205        # DB name to create
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - springboot-react-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    container_name: springboot
+    build:
+      context: ./BACKEND              # BACKEND folder
+      dockerfile: backend.Dockerfile  # inside BACKEND
+    image: dockeraws-backend:latest
+    ports:
+      - "2001:2000"                   # host:container (Spring Boot runs on 2000)
+    depends_on:
+      mysqldb:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - springboot-react-network
+
+  frontend:
+    container_name: react
+    build:
+      context: ./FRONTEND             # FRONTEND folder
+      dockerfile: frontend.Dockerfile # inside FRONTEND
+    image: dockeraws-frontend:latest
+    ports:
+      - "3001:80"                     # open UI at http://localhost:3001
+    depends_on:
+      - backend
+    networks:
+      - springboot-react-network
+
+volumes:
+  mysql-data:
+
+networks:
+  springboot-react-network:
+    driver: bridge
